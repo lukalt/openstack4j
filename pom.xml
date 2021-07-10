@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.openstack4j.core</groupId>
     <artifactId>openstack4j-parent</artifactId>
-    <version>3.11-SNAPSHOT</version>
+    <version>3.12-SNAPSHOT</version>
     <name>OpenStack4j Parent</name>
     <description>OpenStack Java API</description>
     <url>http://github.com/openstack4j/openstack4j/</url>
@@ -17,6 +17,7 @@
         <maven.javadoc.plugin.version>2.10.4</maven.javadoc.plugin.version>
 
         <additionalparam>-Xdoclint:none</additionalparam>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <licenses>
         <license>
@@ -213,6 +214,7 @@
         <pluginManagement>
             <plugins>
                 <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+                <!--
                 <plugin>
                     <groupId>org.eclipse.m2e</groupId>
                     <artifactId>lifecycle-mapping</artifactId>
@@ -243,6 +245,7 @@
                         </lifecycleMappingMetadata>
                     </configuration>
                 </plugin>
+                -->
             </plugins>
         </pluginManagement>
     </build>

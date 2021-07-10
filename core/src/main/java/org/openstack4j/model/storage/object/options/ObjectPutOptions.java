@@ -21,6 +21,7 @@ public final class ObjectPutOptions {
     Map<String, String> headers = Maps.newHashMap();
     private Map<String, List<Object>> queryParams = Maps.newHashMap();
     private String path;
+    private int segmentSize = 0;
 
     private ObjectPutOptions() {
     }
@@ -67,6 +68,35 @@ public final class ObjectPutOptions {
 
     public String getPath() {
         return path;
+    }
+
+    /**
+     * Returns whether segmentation will be used for this put request
+     *
+     * @return true, if segmentation will be used
+     */
+    public boolean isSegmentationUsed() {
+        return this.segmentSize > 0;
+    }
+
+    /**
+     * Retrieves the current segment size in bytes. If a value of 0 is returned, no segmentation will be used and
+     * the payload will be uploaded as a single object.
+     *
+     * @return segment size
+     */
+    public int getSegmentSize() {
+        return segmentSize;
+    }
+
+    /**
+     * Updates the segment size in bytes. If a value of 0 is provided, no segmentation will be used and
+     * the payload will be uploaded as a single object.
+     *
+     * @param segmentSize new segment size in bytes
+     */
+    public void setSegmentSize(int segmentSize) {
+        this.segmentSize = segmentSize;
     }
 
     public ObjectPutOptions queryParam(String key, Object value) {

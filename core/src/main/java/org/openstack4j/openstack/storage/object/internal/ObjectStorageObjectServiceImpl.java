@@ -1,16 +1,22 @@
 package org.openstack4j.openstack.storage.object.internal;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Lists;
+import com.google.common.io.ByteStreams;
 import org.openstack4j.api.storage.ObjectStorageObjectService;
 import org.openstack4j.core.transport.HttpResponse;
 import org.openstack4j.model.common.ActionResponse;
 import org.openstack4j.model.common.DLPayload;
 import org.openstack4j.model.common.Payload;
 import org.openstack4j.model.common.payloads.FilePayload;
+import org.openstack4j.model.common.payloads.InputStreamPayload;
 import org.openstack4j.model.storage.block.options.DownloadOptions;
 import org.openstack4j.model.storage.object.SwiftObject;
 import org.openstack4j.model.storage.object.options.ObjectDeleteOptions;
@@ -25,6 +31,7 @@ import org.openstack4j.openstack.storage.object.functions.ApplyContainerToObject
 import org.openstack4j.openstack.storage.object.functions.MapWithoutMetaPrefixFunction;
 import org.openstack4j.openstack.storage.object.functions.MetadataToHeadersFunction;
 import org.openstack4j.openstack.storage.object.functions.ParseObjectFunction;
+import org.openstack4j.openstack.storage.object.util.LimitingInputStream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.openstack4j.core.transport.HttpEntityHandler.closeQuietly;
@@ -119,9 +126,46 @@ public class ObjectStorageObjectServiceImpl extends BaseObjectStorageService imp
         if (options.getPath() != null && name.indexOf('/') == -1)
             name = options.getPath() + "/" + name;
 
+        if (options.getSegmentSize() > 0) {
+            try {
+                return putMultipart(containerName, name, payload, options);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         HttpResponse resp = put(Void.class, uri("/%s/%s", containerName, name))
                 .entity(payload)
                 .headers(options.getOptions())
+                .contentType(options.getContentType())
+                .paramLists(options.getQueryParams())
+                .executeWithResponse();
+        try {
+            return resp.header(ETAG);
+        } finally {
+            closeQuietly(resp);
+        }
+    }
+
+    private String putMultipart(String containerName, String name, Payload<?> payload, ObjectPutOptions options) throws IOException {
+        InputStream inputStream = payload.open();
+        int segmentCounter = 1;
+        while (inputStream.available() > 0) {
+            LimitingInputStream chunk = new LimitingInputStream(inputStream, options.getSegmentSize());
+
+            put(Void.class, uri("/%s/%s/%010d", containerName, name, segmentCounter))
+                    .entity(new InputStreamPayload(chunk))
+                    .headers(options.getOptions())
+                    .paramLists(options.getQueryParams())
+                    .executeWithResponse();
+
+            segmentCounter++;
+        }
+        Map<String, String> manifestHeaders = new HashMap<>(options.getOptions());
+        manifestHeaders.put("X-Object-Manifest", String.format("%s/%s", containerName, name));
+        HttpResponse resp = put(Void.class, uri("/%s/%s", containerName, name))
+                .entity(new InputStreamPayload(new ByteArrayInputStream(new byte[0])))
+                .headers(manifestHeaders)
                 .contentType(options.getContentType())
                 .paramLists(options.getQueryParams())
                 .executeWithResponse();
